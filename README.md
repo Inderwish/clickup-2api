@@ -19,6 +19,7 @@ ClickUp Brain 的对话流程（逆向所得）：
 首次启动前必须准备：
 
 1. `CLICKUP_JWT`：ClickUp 登录凭据。
+# jwt暂时每两天需要获取一次
 2. `CLICKUP_WORKSPACE_ID`：ClickUp 工作区数字 ID。
 3. `API_KEY`：你为本服务设置的访问密钥，不是 ClickUp JWT。所有 OpenAI 客户端都要使用它。
 
