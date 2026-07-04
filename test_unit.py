@@ -122,15 +122,45 @@ class ModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[0]["id"], DEFAULT_MODEL_ID)
         client._fetch_models_from_session.assert_not_awaited()
 
-    async def test_unsupported_generation_parameters_are_accepted(self):
-        request = ChatCompletionRequest(
-            messages=[ChatMessage(role="user", content="test")],
-            temperature=99,
-            top_p="ignored",
-            max_tokens=-1,
+    async def test_unsupported_generation_parameters_are_silently_ignored(self):
+        request = ChatCompletionRequest.model_validate(
+            {
+                "messages": [{"role": "user", "content": "test"}],
+                "temperature": 99,
+                "top_p": "ignored",
+                "max_tokens": -1,
+                "unknown_vendor_option": {"ignored": True},
+            }
         )
 
-        self.assertEqual(request.temperature, 99)
+        self.assertEqual(
+            set(request.model_dump()),
+            {"model", "messages", "stream"},
+        )
+
+    async def test_modern_message_roles_and_content_parts_are_normalized(self):
+        request = ChatCompletionRequest.model_validate(
+            {
+                "messages": [
+                    {
+                        "role": "developer",
+                        "content": [
+                            {"type": "text", "text": "Reply briefly."},
+                            {"type": "image_url", "image_url": {"url": "ignored"}},
+                            "Use plain text.",
+                        ],
+                    },
+                    {"role": "assistant", "content": None},
+                ]
+            }
+        )
+
+        self.assertEqual(request.messages[0].role, "developer")
+        self.assertEqual(
+            request.messages[0].content,
+            "Reply briefly.\nUse plain text.",
+        )
+        self.assertEqual(request.messages[1].content, "")
 
 
 if __name__ == "__main__":
