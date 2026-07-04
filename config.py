@@ -36,6 +36,7 @@ class Settings:
     clickup_tz_offset: str = "-480"
     sd_tab_id: str = ""
     workspace_id: str = ""
+    access_token_base_url: str = "https://frontdoor-prod-us-east-2-2.clickup.com"
     accounts: list = field(default_factory=list)
 
 
@@ -127,6 +128,10 @@ def load_settings() -> Settings:
         clickup_tz_offset=os.getenv("CLICKUP_TZ_OFFSET", "-480"),
         sd_tab_id=os.getenv("CLICKUP_SD_TAB_ID", ""),
         workspace_id=os.getenv("CLICKUP_WORKSPACE_ID", ""),
+        access_token_base_url=os.getenv(
+            "CLICKUP_ACCESS_TOKEN_BASE",
+            "https://frontdoor-prod-us-east-2-2.clickup.com",
+        ),
         accounts=_parse_accounts(),
     )
 

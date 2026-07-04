@@ -2,6 +2,7 @@ import asyncio
 import base64
 import itertools
 import json
+import os
 import time
 from typing import AsyncIterator, List, Optional, Tuple
 from urllib.parse import quote
@@ -61,9 +62,11 @@ class AccountSession:
         self.account = account
         self.s = settings
         self.headers = build_headers(settings)
-        self.ws_url = "wss://frontdoor-search.clickup-prod.com/graphql/gateway?c=gws-web-1"
+        # WS URL 从 base_url 推导：https:// → wss://
+        _ws_base = settings.base_url.replace("https://", "wss://").replace("http://", "ws://")
+        self.ws_url = f"{_ws_base}{settings.graphql_path}?c=gws-web-1"
         self.access_token_url = (
-            f"https://frontdoor-prod-us-east-2-2.clickup.com"
+            f"{settings.access_token_base_url}"
             f"/v2/sd/team/{account.workspace_id}/access-token"
         )
         self._session_token: Optional[str] = None
@@ -243,10 +246,13 @@ class AccountSession:
 
         deadline = time.monotonic() + 300  # 整体 5 分钟超时
 
+        _proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or True
         async with websockets.connect(
             self.ws_url,
             additional_headers={"Origin": "https://app.clickup.com", "User-Agent": self.headers.get("User-Agent", "")},
             subprotocols=["graphql-transport-ws"], max_size=2**20,
+            open_timeout=30,
+            proxy=_proxy,
         ) as ws:
             await ws.send(json.dumps({"type": "connection_init", "payload": {"Authorization": f"Bearer {session_token}"}}))
             ack_deadline = time.monotonic() + 15
@@ -476,7 +482,7 @@ class ClickUpBrainClient:
                 return result
             except Exception as e:
                 session.mark_failure()
-                print(f"[clickup-2api] {session.label} 失败: {e}，切换下一个账号")
+                print(f"[clickup-2api] {session.label} 失败: {type(e).__name__}: {e}，切换下一个账号")
                 errors.append(f"{session.label}: {e}")
                 continue
         raise RuntimeError(f"所有账号均失败: {'; '.join(errors)}")
